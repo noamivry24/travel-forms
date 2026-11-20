@@ -131,6 +131,18 @@
     },
   };
 
+  // fontkit (used by pdf-lib) reverses any string whose first letter is Hebrew,
+  // which would undo toVisual(). So draw the visual-order text in pieces:
+  // Hebrew pieces are handed over reversed (fontkit flips them back), others as-is.
+  function drawVisual(page, text, x, y, size, font, color) {
+    const parts = text.match(/[\u0590-\u05FF]+|[^\u0590-\u05FF]+/g) || [];
+    for (const part of parts) {
+      const isHeb = HEB.test(part);
+      page.drawText(isHeb ? [...part].reverse().join('') : part, { x, y, size, font, color });
+      x += font.widthOfTextAtSize(part, size);
+    }
+  }
+
   // ---------- Filling ----------
   async function fill(formKey, { PDFLib, fontkit, pdfBytes, fontBytes, answers, signaturePng }) {
     const form = FORMS[formKey];
@@ -150,7 +162,7 @@
       if (w > maxW) { size = Math.max(size * 0.6, size * maxW / w); w = font.widthOfTextAtSize(text, size); }
       const x = f.align === 'center' ? (f.x1 + f.x2) / 2 - w / 2 : f.x2 - 2 - w;
       const lift = f.lift ?? form.lift;
-      page.drawText(text, { x, y: f.y + lift, size, font, color: ink });
+      drawVisual(page, text, x, f.y + lift, size, font, ink);
     }
 
     if (signaturePng && form.signature) {
@@ -164,7 +176,7 @@
     return doc.save();
   }
 
-  const api = { FORMS, fill, toVisual, fmtDate };
+  const api = { FORMS, fill, toVisual, drawVisual, fmtDate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FormFiller = api;
 })(typeof window !== 'undefined' ? window : globalThis);
