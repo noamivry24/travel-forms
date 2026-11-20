@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>טפסי נסיעה לחו"ל</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <h1>טפסי נסיעה לחו"ל בתפקיד</h1>
+      <p class="lead">עונים על השאלות, ומקבלים את הטפסים הרשמיים ממולאים וחתומים, מוכנים להגשה.</p>
+      <p class="privacy">🔒 כל המילוי מתבצע במחשב שלך. שום פרט, כולל פרטי האשראי, לא נשלח לשום מקום ולא נשמר.</p>
+    </header>
+
+    <form id="app" novalidate autocomplete="on">
+
+      <!-- 1. Which forms -->
+      <section class="card">
+        <h2><span class="num">1</span> אילו טפסים צריך?</h2>
+        <div class="choices">
+          <label class="choice">
+            <input type="checkbox" name="want" value="commitment" checked>
+            <span class="choice-body">
+              <strong>התחייבות לפני נסיעה</strong>
+              <small>הקצאה בכרטיס אשראי – ממלאים לפני הטיסה</small>
+            </span>
+          </label>
+          <label class="choice">
+            <input type="checkbox" name="want" value="settlement">
+            <span class="choice-body">
+              <strong>התחשבנות אחרי הנסיעה</strong>
+              <small>פירוט הוצאות – ממלאים אחרי החזרה</small>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- 2. Personal -->
+      <section class="card">
+        <h2><span class="num">2</span> פרטים אישיים</h2>
+        <div class="grid">
+          <label>שם מלא <input name="name" autocomplete="name" required></label>
+          <label>מספר תעודת זהות <input name="idNum" inputmode="numeric" maxlength="9" required>
+            <span class="hint" data-hint="idNum"></span></label>
+          <label>דרגה <input name="rank"></label>
+          <label data-show="settlement">תפקיד <input name="role"></label>
+          <label>טלפון נייד <input name="phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr"></label>
+          <label>כתובת מייל <input name="email" type="email" autocomplete="email" dir="ltr"></label>
+        </div>
+        <label class="remember"><input type="checkbox" id="remember"> לזכור את הפרטים האישיים במחשב הזה (בלי פרטי בנק ואשראי)</label>
+      </section>
+
+      <!-- 3. Trip -->
+      <section class="card">
+        <h2><span class="num">3</span> פרטי הנסיעה</h2>
+        <div class="grid">
+          <label class="wide">יעד <input name="destination" placeholder="למשל: פריז, צרפת"></label>
+          <label>תאריך יציאה מהארץ <input name="depDate" type="date"></label>
+          <label>שעת המראה <input name="depTime" type="time"></label>
+          <label>תאריך חזרה לארץ <input name="retDate" type="date"></label>
+          <label>שעת נחיתה <input name="retTime" type="time"></label>
+        </div>
+      </section>
+
+      <!-- 4. Commitment form: bank + card -->
+      <section class="card" data-show="commitment">
+        <h2><span class="num">4</span> חשבון בנק וכרטיס אשראי <small class="tag">לטופס ההתחייבות</small></h2>
+        <div class="grid">
+          <label>בנק <input name="bank" list="banks"></label>
+          <label>סניף <input name="branch" inputmode="numeric"></label>
+          <label>מספר חשבון <input name="account" inputmode="numeric" dir="ltr"></label>
+        </div>
+        <p class="note">כרטיס אשראי פרטי – לא כרטיס שהונפק ע"י משרד הביטחון.</p>
+        <div class="grid">
+          <label class="wide">מספר כרטיס אשראי <input name="cardNumber" inputmode="numeric" autocomplete="off" dir="ltr" placeholder="0000 0000 0000 0000">
+            <span class="hint" data-hint="cardNumber"></span></label>
+          <label>סוג כרטיס
+            <select name="cardType">
+              <option value=""></option>
+              <option>ויזה</option><option>מאסטרקארד</option><option>ישראכרט</option>
+              <option>אמריקן אקספרס</option><option>דיינרס</option><option>אחר</option>
+            </select></label>
+          <label>תוקף <input name="cardExpiry" inputmode="numeric" autocomplete="off" dir="ltr" placeholder="MM/YY" maxlength="5"></label>
+          <label>CVV <input name="cvv" inputmode="numeric" autocomplete="off" dir="ltr" maxlength="4"></label>
+        </div>
+        <datalist id="banks">
+          <option>לאומי</option><option>הפועלים</option><option>דיסקונט</option><option>מזרחי טפחות</option>
+          <option>הבינלאומי</option><option>מרכנתיל</option><option>יהב</option><option>ירושלים</option>
+          <option>מסד</option><option>אוצר החייל</option><option>וואן זירו</option>
+        </datalist>
+      </section>
+
+      <!-- 5. Settlement form: advance + expenses -->
+      <section class="card" data-show="settlement">
+        <h2><span class="num">5</span> מקדמה והוצאות <small class="tag">לטופס ההתחשבנות</small></h2>
+        <div class="grid">
+          <label>סכום המקדמה שנמשכה <input name="advance" inputmode="decimal" dir="ltr"></label>
+          <label>מטבע
+            <select name="advanceCurrency"><option>₪</option><option selected>$</option><option>€</option><option>£</option></select></label>
+        </div>
+        <p class="note">ממלאים רק את השורות הרלוונטיות. בעמודת תאריך אפשר לכתוב גם טווח, למשל 1-7/11.
+          בשורת הכלכלה מסמנים כמה ארוחות מכל סוג צריך לקזז.</p>
+        <div class="expenses" id="expenses"></div>
+      </section>
+
+      <!-- 6. Sign -->
+      <section class="card">
+        <h2><span class="num" id="signNum">6</span> תאריך וחתימה</h2>
+        <div class="grid">
+          <label>תאריך מילוי <input name="fillDate" type="date"></label>
+        </div>
+        <div class="sig-wrap">
+          <canvas id="sig" aria-label="משטח חתימה"></canvas>
+          <span class="sig-placeholder">חתמו כאן עם העכבר או האצבע</span>
+          <button type="button" class="link" id="sigClear">ניקוי</button>
+        </div>
+      </section>
+
+      <section class="card actions">
+        <div id="missing" class="missing" hidden></div>
+        <div class="buttons" id="buttons"></div>
+        <p class="status" id="status" role="status"></p>
+      </section>
+    </form>
+
+    <footer class="foot">הטפסים המקוריים לא משתנים. האתר רק כותב את התשובות במקומות המתאימים.</footer>
+  </main>
+
+  <script src="lib/pdf-lib.min.js"></script>
+  <script src="lib/fontkit.umd.min.js"></script>
+  <script src="fill.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
