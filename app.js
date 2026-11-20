@@ -322,6 +322,12 @@
   });
   form.addEventListener('input', () => { if (!missingEl.hidden) { missingEl.hidden = true; buttonsEl.querySelectorAll('[data-confirm]').forEach(b => delete b.dataset.confirm); } });
 
+  // Load the YouTube video only when the guide is opened (nothing is sent to YouTube before that).
+  document.querySelectorAll('details.help').forEach(d => d.addEventListener('toggle', () => {
+    const f = d.querySelector('iframe[data-src]');
+    if (d.open && f && !f.src) f.src = f.dataset.src;
+  }));
+
   // ---------- Start ----------
   field('fillDate').value = new Date().toLocaleDateString('en-CA');
   form.querySelectorAll('input[name=want]').forEach(i => i.addEventListener('change', refreshVisibility));
