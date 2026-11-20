@@ -225,7 +225,10 @@
       link.href = url; link.download = `${def.fileName}${a.name ? ' - ' + a.name : ''}.pdf`;
       document.body.append(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      statusEl.textContent = '✓ הטופס הורד. כדאי לפתוח ולבדוק אותו לפני ההגשה.';
+      const cardMissing = key === 'commitment' && !(a.cardNumber && a.cardExpiry && a.cvv);
+      statusEl.textContent = cardMissing
+        ? '✓ הטופס הורד. שימו לב: פרטי האשראי לא מולאו – צריך להשלים אותם ידנית בקובץ לפני ההגשה.'
+        : '✓ הטופס הורד. כדאי לפתוח ולבדוק אותו לפני ההגשה.';
     } catch (err) {
       console.error(err);
       statusEl.textContent = 'משהו השתבש: ' + err.message;
