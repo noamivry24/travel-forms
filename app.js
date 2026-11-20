@@ -147,7 +147,7 @@
 
   const REQUIRED = {
     common: [['name', 'שם מלא'], ['idNum', 'תעודת זהות'], ['destination', 'יעד'], ['depDate', 'תאריך יציאה'], ['retDate', 'תאריך חזרה']],
-    commitment: [['cardNumber', 'מספר כרטיס אשראי'], ['cardExpiry', 'תוקף הכרטיס'], ['cvv', 'CVV']],
+    commitment: [], // card details are optional on purpose
     settlement: [],
   };
   function missingFor(key, a) {
@@ -193,7 +193,7 @@
       if (!w.includes(key)) continue;
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'btn'; b.dataset.form = key;
-      b.textContent = 'הורדת ' + (key === 'commitment' ? 'טופס ההתחייבות' : 'טופס ההתחשבנות');
+      b.textContent = 'הורדת ' + (key === 'commitment' ? 'טופס משיכת אש״ל' : 'טופס ההתחשבנות');
       buttonsEl.append(b);
     }
   }

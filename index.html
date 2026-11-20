@@ -23,7 +23,7 @@
           <label class="choice">
             <input type="checkbox" name="want" value="commitment" checked>
             <span class="choice-body">
-              <strong>התחייבות לפני נסיעה</strong>
+              <strong>טופס משיכת אש״ל</strong>
               <small>הקצאה בכרטיס אשראי – ממלאים לפני הטיסה</small>
             </span>
           </label>
@@ -66,12 +66,13 @@
 
       <!-- 4. Commitment form: bank + card -->
       <section class="card" data-show="commitment">
-        <h2><span class="num">4</span> חשבון בנק וכרטיס אשראי <small class="tag">לטופס ההתחייבות</small></h2>
+        <h2><span class="num">4</span> חשבון בנק וכרטיס אשראי <small class="tag">לטופס משיכת אש״ל</small></h2>
         <div class="grid">
           <label>בנק <input name="bank" list="banks"></label>
           <label>סניף <input name="branch" inputmode="numeric"></label>
           <label>מספר חשבון <input name="account" inputmode="numeric" dir="ltr"></label>
         </div>
+        <p class="optional-note">🔒 פרטי האשראי לא חובה. אפשר למלא אותם כאן, או להשאיר ריק ולהוסיף אותם בעצמכם אחרי הורדת הקובץ, אם אתם חוששים מזליגת מידע.</p>
         <p class="note">כרטיס אשראי פרטי – לא כרטיס שהונפק ע"י משרד הביטחון.</p>
         <div class="grid">
           <label class="wide">מספר כרטיס אשראי <input name="cardNumber" inputmode="numeric" autocomplete="off" dir="ltr" placeholder="0000 0000 0000 0000">

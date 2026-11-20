@@ -101,8 +101,8 @@
 
     commitment: {
       file: 'forms/form2.pdf',
-      title: 'התחייבות לפני נסיעה – הקצאה בכרטיס אשראי',
-      fileName: 'טופס התחייבות אשראי',
+      title: 'טופס משיכת אש״ל',
+      fileName: 'טופס משיכת אש״ל',
       size: 10, lift: 2,
       fields: a => [
         { v: fmtDate(a.fillDate), x1: 447, x2: 526, y: 781, align: 'center' },
