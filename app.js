@@ -4,30 +4,120 @@
   const $ = sel => form.querySelector(sel);
   const field = name => form.elements[name];
 
-  // ---------- Expenses table (settlement form) ----------
-  const EXPENSES = [
-    { key: 'food', title: 'כלכלה', sub: 'ארוחות לקיזוז', meals: true },
-    { key: 'lodging', title: 'לינה', sub: 'עם קבלה מפורטת' },
-    { key: 'car', title: 'הוצאות רכב בחו"ל', sub: 'דלק, חניה' },
-    { key: 'taxiIL', title: 'מוניות בארץ', sub: 'לשדה התעופה וממנו' },
-    { key: 'taxiAbroad', title: 'מוניות בחו"ל', sub: 'לשדה התעופה וממנו' },
-    { key: 'other', title: 'אחר', sub: 'בתיאום מראש' },
+  // ---------- Currencies ----------
+  const CURRENCIES = [
+    ['USD', 'דולר אמריקאי'], ['EUR', 'אירו'], ['ILS', 'שקל'], ['GBP', 'לירה שטרלינג'],
+    ['CHF', 'פרנק שווייצרי'], ['CAD', 'דולר קנדי'], ['AUD', 'דולר אוסטרלי'], ['NZD', 'דולר ניו זילנדי'],
+    ['SGD', 'דולר סינגפורי'], ['HKD', 'דולר הונג קונגי'], ['THB', 'באט תאילנדי'], ['JPY', 'ין יפני'],
+    ['CNY', 'יואן סיני'], ['KRW', 'וון דרום קוריאני'], ['INR', 'רופי הודי'], ['VND', 'דונג וייטנאמי'],
+    ['PHP', 'פסו פיליפיני'], ['IDR', 'רופיה אינדונזית'], ['MYR', 'רינגיט מלזי'], ['AED', 'דירהם (איחוד האמירויות)'],
+    ['BHD', 'דינר בחרייני'], ['MAD', 'דירהם מרוקאי'], ['EGP', 'לירה מצרית'], ['JOD', 'דינר ירדני'],
+    ['TRY', 'לירה טורקית'], ['GEL', 'לארי גאורגי'], ['AZN', 'מנאט אזרבייג׳ני'], ['KZT', 'טנגה קזחסטני'],
+    ['PLN', 'זלוטי פולני'], ['CZK', 'קורונה צ׳כית'], ['HUF', 'פורינט הונגרי'], ['RON', 'לאו רומני'],
+    ['BGN', 'לב בולגרי'], ['RSD', 'דינר סרבי'], ['UAH', 'הריבנה אוקראינית'], ['SEK', 'קרונה שוודית'],
+    ['NOK', 'קרונה נורווגית'], ['DKK', 'כתר דני'], ['ISK', 'קרונה איסלנדית'], ['MXN', 'פסו מקסיקני'],
+    ['BRL', 'ריאל ברזילאי'], ['ARS', 'פסו ארגנטינאי'], ['CLP', 'פסו צ׳יליאני'], ['COP', 'פסו קולומביאני'],
+    ['PEN', 'סול פרואני'], ['ZAR', 'ראנד דרום אפריקאי'], ['KES', 'שילינג קנייתי'], ['ETB', 'ביר אתיופי'],
+  ];
+  let lastCurrency = 'USD';
+  function currencyHTML(selected) {
+    const opts = CURRENCIES.map(([c, n]) => `<option value="${c}"${c === selected ? ' selected' : ''}>${n} (${c})</option>`).join('');
+    return `<select class="cur">${opts}<option value="OTHER">מטבע אחר…</option></select>
+      <input class="cur-other" dir="ltr" placeholder="קוד המטבע, למשל LKR" hidden maxlength="12">`;
+  }
+  const readCurrency = box => {
+    const sel = box.querySelector('select.cur');
+    return sel.value === 'OTHER' ? box.querySelector('.cur-other').value.trim().toUpperCase() : sel.value;
+  };
+  form.addEventListener('change', ev => {
+    if (!ev.target.matches('select.cur')) return;
+    const other = ev.target.parentElement.querySelector('.cur-other');
+    other.hidden = ev.target.value !== 'OTHER';
+    if (ev.target.value === 'OTHER') other.focus();
+    else if (ev.target.value !== 'ILS') lastCurrency = ev.target.value;
+  });
+  document.querySelectorAll('.cur-slot').forEach(slot => { slot.innerHTML = currencyHTML(slot.dataset.default); });
+
+  // ---------- Expenses (settlement form) ----------
+  const CATS = [
+    { key: 'lodging', title: 'לינה', sub: 'עם קבלה מפורטת', add: 'הוספת מלון' },
+    { key: 'car', title: 'הוצאות רכב בחו"ל', sub: 'דלק, חניה, השכרה', add: 'הוספת הוצאה', desc: 'למשל: דלק / חניה' },
+    { key: 'taxiIL', title: 'מוניות בארץ', sub: 'לשדה התעופה וממנו', add: 'הוספת נסיעה', desc: 'למשל: מהבית לנתב״ג', currency: 'ILS' },
+    { key: 'taxiAbroad', title: 'מוניות בחו"ל', sub: 'לציין יעד ומטרה', add: 'הוספת נסיעה', desc: 'מאיפה לאן ולמה' },
+    { key: 'other', title: 'אחר', sub: 'בתיאום מראש: כנס, קורס, מזוודה', add: 'הוספת הוצאה', desc: 'מה זה היה' },
   ];
   const expBox = document.getElementById('expenses');
-  for (const e of EXPENSES) {
-    const meals = e.meals ? `
-      <label>בוקר <input name="ex_${e.key}_breakfast" inputmode="numeric" placeholder="כמה"></label>
-      <label>צהריים <input name="ex_${e.key}_lunch" inputmode="numeric" placeholder="כמה"></label>
-      <label>ערב <input name="ex_${e.key}_dinner" inputmode="numeric" placeholder="כמה"></label>` : '';
+  for (const c of CATS) {
+    const lodging = c.key === 'lodging';
     expBox.insertAdjacentHTML('beforeend', `
-      <div class="exp-row">
-        <div class="exp-title">${e.title}<small>${e.sub}</small></div>
-        <div class="exp-fields">
-          <label>תאריך <input name="ex_${e.key}_date" dir="ltr" placeholder="1-7/11"></label>
-          ${meals}
-          <label>סכום <input name="ex_${e.key}_sum" inputmode="decimal" dir="ltr"></label>
+      <div class="cat" data-cat="${c.key}">
+        <h3>${c.title}<small>${c.sub}</small></h3>
+        ${lodging ? `
+        <div class="question">שילמת על החדר?
+          <label class="pill"><input type="radio" name="lodgingPaid" value="yes"> כן</label>
+          <label class="pill"><input type="radio" name="lodgingPaid" value="no"> לא</label>
         </div>
+        <div class="payer" hidden><label>מי שילם? <input data-f="payer" placeholder="שם האדם או הגוף ששילם"></label></div>` : ''}
+        <div class="paid-part"${lodging ? ' hidden' : ''}>
+          <div class="entries"></div>
+          <button type="button" class="add">+ ${c.add}</button>
+        </div>
+        <label class="note-field">הערה <textarea data-f="note" rows="2" placeholder="לא חובה"></textarea></label>
       </div>`);
+  }
+  function addEntry(catEl) {
+    const c = CATS.find(x => x.key === catEl.dataset.cat);
+    const lodging = c.key === 'lodging';
+    const cur = c.currency || lastCurrency;
+    const fields = lodging ? `
+        <label>מתאריך <input type="date" data-f="from"></label>
+        <label>עד תאריך <input type="date" data-f="to"></label>
+        <label class="wide">שם המלון <input data-f="desc"></label>` : `
+        <label>תאריך <input type="date" data-f="date"></label>
+        <label class="wide">תיאור <input data-f="desc" placeholder="${c.desc}"></label>`;
+    catEl.querySelector('.entries').insertAdjacentHTML('beforeend', `
+      <div class="entry">${fields}
+        <label>סכום <input data-f="amount" inputmode="decimal" dir="ltr"></label>
+        <label class="cur-box">מטבע ${currencyHTML(cur)}</label>
+        <button type="button" class="remove" aria-label="הסרת ההוצאה" title="הסרה">×</button>
+      </div>`);
+  }
+  expBox.addEventListener('click', ev => {
+    if (ev.target.matches('.add')) addEntry(ev.target.closest('.cat'));
+    if (ev.target.matches('.remove')) ev.target.closest('.entry').remove();
+  });
+  expBox.addEventListener('change', ev => {
+    if (ev.target.name !== 'lodgingPaid') return;
+    const cat = ev.target.closest('.cat'), yes = ev.target.value === 'yes';
+    cat.querySelector('.paid-part').hidden = !yes;
+    cat.querySelector('.payer').hidden = yes;
+    if (yes && !cat.querySelector('.entry')) addEntry(cat);
+  });
+  expBox.addEventListener('input', ev => {
+    if (ev.target.dataset.f === 'amount') ev.target.value = ev.target.value.replace(/[^\d.,]/g, '');
+  });
+
+  function collectExpenses() {
+    const out = {};
+    for (const catEl of expBox.querySelectorAll('.cat')) {
+      const key = catEl.dataset.cat;
+      const val = sel => (catEl.querySelector(sel)?.value || '').trim();
+      const cat = { note: val('[data-f=note]'), entries: [] };
+      if (key === 'lodging') {
+        cat.paid = catEl.querySelector('input[name=lodgingPaid]:checked')?.value || '';
+        cat.payer = val('[data-f=payer]');
+      }
+      if (key !== 'lodging' || cat.paid === 'yes') {
+        for (const en of catEl.querySelectorAll('.entry')) {
+          const e = { currency: readCurrency(en.querySelector('.cur-box')) };
+          en.querySelectorAll('[data-f]').forEach(i => { e[i.dataset.f] = i.value.trim(); });
+          e.amount = (e.amount || '').replace(/,/g, '');
+          if (e.amount || e.date || e.from || e.desc) cat.entries.push(e);
+        }
+      }
+      out[key] = cat;
+    }
+    return out;
   }
 
   // ---------- Which forms are selected ----------
@@ -132,16 +222,12 @@
   // ---------- Answers ----------
   function collect() {
     const a = {};
-    for (const el of form.elements) if (el.name && !el.name.startsWith('ex_') && el.name !== 'want') a[el.name] = el.value.trim();
-    a.expenses = {};
-    for (const e of EXPENSES) {
-      const row = {};
-      for (const col of ['date', 'breakfast', 'lunch', 'dinner', 'sum']) {
-        const el = field(`ex_${e.key}_${col}`);
-        if (el && el.value.trim()) row[col] = el.value.trim();
-      }
-      a.expenses[e.key] = row;
+    for (const el of form.elements) {
+      if (!el.name || el.name === 'want' || el.name === 'lodgingPaid') continue;
+      a[el.name] = el.value.trim();
     }
+    a.advanceCurrency = readCurrency(document.querySelector('.cur-slot[data-name=advanceCurrency]'));
+    a.expenses = collectExpenses();
     return a;
   }
 

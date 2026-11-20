@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>טפסי נסיעה לחו"ל</title>
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <main class="wrap">
@@ -100,11 +100,9 @@
         <h2><span class="num">5</span> מקדמה והוצאות <small class="tag">לטופס ההתחשבנות</small></h2>
         <div class="grid">
           <label>סכום המקדמה שנמשכה <input name="advance" inputmode="decimal" dir="ltr"></label>
-          <label>מטבע
-            <select name="advanceCurrency"><option>₪</option><option selected>$</option><option>€</option><option>£</option></select></label>
+          <label>מטבע <span class="cur-slot" data-name="advanceCurrency" data-default="USD"></span></label>
         </div>
-        <p class="note">ממלאים רק את השורות הרלוונטיות. בעמודת תאריך אפשר לכתוב גם טווח, למשל 1-7/11.
-          בשורת הכלכלה מסמנים כמה ארוחות מכל סוג צריך לקזז.</p>
+        <p class="note">ממלאים רק את מה שרלוונטי. אם יש יותר מהוצאה אחת באותו סעיף, יתווסף לטופס עמוד נספח עם פירוט מלא.</p>
         <div class="expenses" id="expenses"></div>
       </section>
 
@@ -133,7 +131,7 @@
 
   <script src="lib/pdf-lib.min.js"></script>
   <script src="lib/fontkit.umd.min.js"></script>
-  <script src="fill.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="fill.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

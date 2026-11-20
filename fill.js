@@ -7,7 +7,7 @@
   // pdf-lib draws glyphs left to right, so Hebrew text must be converted to
   // "visual order" first. Numbers, dates and Latin words stay left to right.
   const HEB = /[֐-׿]/;
-  const LTR = /[A-Za-z0-9À-ɏ]/;
+  const LTR = /[A-Za-z0-9\u00C0-\u024F$€£¥₪%]/; // currency signs stay with their numbers
   const MIRROR = { '(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{', '<': '>', '>': '<' };
 
   function toVisual(str) {
@@ -47,13 +47,58 @@
   // x1..x2 is the blank line; y is the line height. Text is right-aligned (RTL form)
   // unless align is 'center'.
 
+  // Currencies: common ones get their symbol, the rest are printed as ISO code.
+  const CUR_SYMBOL = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' };
+  const money = (amount, cur) => `${fmtMoney(amount)} ${CUR_SYMBOL[cur] || cur || ''}`.trim();
+  function totals(entries) {
+    const t = {};
+    for (const e of entries) {
+      const n = Number(String(e.amount).replace(/,/g, ''));
+      if (!e.amount || isNaN(n)) continue;
+      t[e.currency] = (t[e.currency] || 0) + n;
+    }
+    return Object.entries(t).map(([c, n]) => money(Math.round(n * 100) / 100, c));
+  }
+  const shortDate = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? `${+m[3]}/${+m[2]}` : (v || ''); };
+  function dateSpan(dates) {
+    const d = dates.filter(Boolean).sort();
+    if (!d.length) return '';
+    return d[0] === d[d.length - 1] ? shortDate(d[0]) : `${shortDate(d[0])}-${shortDate(d[d.length - 1])}`;
+  }
+
+  // Expense categories, in table order. top/bottom are the row edges on the scan (from the top).
+  const CATEGORIES = [
+    { key: 'lodging', title: 'לינה', top: 1205, bottom: 1440 },
+    { key: 'car', title: 'הוצאות רכב בחו"ל', top: 1440, bottom: 1625 },
+    { key: 'taxiIL', title: 'מוניות בארץ', top: 1625, bottom: 1745 },
+    { key: 'taxiAbroad', title: 'מוניות בחו"ל', top: 1745, bottom: 1970 },
+    { key: 'other', title: 'אחר', top: 1970, bottom: 2080 },
+  ];
+
   // Form 1: scanned page, 2052 x 2993 pt.
   const F1 = { size: 38, lift: 9 };
-  const f1Rows = [
-    ['food', 1100], ['lodging', 1320], ['car', 1530],
-    ['taxiIL', 1685], ['taxiAbroad', 1858], ['other', 2025],
-  ];
-  const f1Cols = { date: [1588, 130], breakfast: [1465, 100], lunch: [1320, 170], dinner: [1183, 85], sum: [1078, 110] };
+  const H1 = 2993;
+
+  function settlementBlocks(a) {
+    const ex = a.expenses || {};
+    const blocks = [];
+    for (const c of CATEGORIES) {
+      const cat = ex[c.key] || {};
+      const entries = cat.entries || [];
+      const drift = ((c.top + c.bottom) / 2 - 1100) * 0.018; // the scan is slightly tilted
+      const yTop = H1 - c.top - 14, yBottom = H1 - c.bottom + 14;
+      const dates = c.key === 'lodging' ? entries.flatMap(e => [e.from, e.to]) : entries.map(e => e.date);
+      const notes = [];
+      if (c.key === 'lodging' && cat.paid === 'no') notes.push(`שולם ע״י ${cat.payer || '__________'}`);
+      if (entries.length === 1 && entries[0].desc) notes.push(entries[0].desc);
+      if (cat.note) notes.push(cat.note);
+      const common = { cat: c.key, yTop, yBottom, many: entries.length > 1 };
+      blocks.push({ ...common, kind: 'date', paras: [dateSpan(dates)], x1: 1522 - drift, x2: 1653 - drift, size: 28 });
+      blocks.push({ ...common, kind: 'notes', paras: notes, x1: 1140 - drift, x2: 1517 - drift, size: 30, align: 'right' });
+      blocks.push({ ...common, kind: 'sum', paras: totals(entries), x1: 1022 - drift, x2: 1135 - drift, size: 28, noWrap: true });
+    }
+    return blocks;
+  }
 
   const FORMS = {
     settlement: {
@@ -61,41 +106,27 @@
       title: 'התחשבנות לאחר נסיעת חו"ל בתפקיד',
       fileName: 'טופס התחשבנות',
       size: F1.size, lift: F1.lift,
-      fields: a => {
-        const list = [
-          { v: fmtDate(a.fillDate), x1: 1528, x2: 1855, y: 2678 },
-          { v: a.name, x1: 1318, x2: 1745, y: 2475 },
-          { v: a.idNum, x1: 568, x2: 948, y: 2456 },
-          { v: a.destination, x1: 205, x2: 400, y: 2448 },
-          { v: fmtDate(a.depDate), x1: 1418, x2: 1622, y: 2395 },
-          { v: a.depTime, x1: 1012, x2: 1190, y: 2393 },
-          { v: fmtDate(a.retDate), x1: 480, x2: 700, y: 2385 },
-          { v: a.retTime, x1: 60, x2: 245, y: 2383 },
-          { v: join(a.rank, a.role), x1: 1205, x2: 1565, y: 2328 },
-          { v: a.phone, x1: 770, x2: 1050, y: 2318 },
-          { v: a.email, x1: 205, x2: 580, y: 2313 },
-          { v: a.advance ? `${fmtMoney(a.advance)} ${a.advanceCurrency || ''}`.trim() : '', x1: 1095, x2: 1545, y: 2250 },
-          // Declaration at the bottom
-          { v: a.name, x1: 1350, x2: 1755, y: 558 },
-          { v: a.idNum, x1: 895, x2: 1255, y: 555 },
-          { v: a.role, x1: 455, x2: 585, y: 548 },
-          { v: a.rank, x1: 230, x2: 335, y: 546 },
-        ];
-        // Expenses table. The scan is slightly tilted, so columns drift left lower down.
-        const ex = a.expenses || {};
-        for (const [key, rowY] of f1Rows) {
-          const row = ex[key] || {};
-          const drift = (rowY - 1100) * 0.018;
-          const y = 2993 - rowY - 12;
-          for (const [col, [cx, w]] of Object.entries(f1Cols)) {
-            let v = row[col];
-            if (!v) continue;
-            if (col === 'sum') v = fmtMoney(v);
-            list.push({ v, x1: cx - drift - w / 2, x2: cx - drift + w / 2, y, align: 'center', lift: 0, size: 32 });
-          }
-        }
-        return list;
-      },
+      fields: a => [
+        { v: fmtDate(a.fillDate), x1: 1528, x2: 1855, y: 2678 },
+        { v: a.name, x1: 1318, x2: 1745, y: 2475 },
+        { v: a.idNum, x1: 568, x2: 948, y: 2456 },
+        { v: a.destination, x1: 205, x2: 400, y: 2448 },
+        { v: fmtDate(a.depDate), x1: 1418, x2: 1622, y: 2395 },
+        { v: a.depTime, x1: 1012, x2: 1190, y: 2393 },
+        { v: fmtDate(a.retDate), x1: 480, x2: 700, y: 2385 },
+        { v: a.retTime, x1: 60, x2: 245, y: 2383 },
+        { v: join(a.rank, a.role), x1: 1205, x2: 1565, y: 2328 },
+        { v: a.phone, x1: 770, x2: 1050, y: 2318 },
+        { v: a.email, x1: 205, x2: 580, y: 2313 },
+        { v: a.advance ? money(a.advance, a.advanceCurrency) : '', x1: 1095, x2: 1545, y: 2250 },
+        // Declaration at the bottom
+        { v: a.name, x1: 1350, x2: 1755, y: 558 },
+        { v: a.idNum, x1: 895, x2: 1255, y: 555 },
+        { v: a.role, x1: 455, x2: 585, y: 548 },
+        { v: a.rank, x1: 230, x2: 335, y: 546 },
+      ],
+      blocks: settlementBlocks,
+      appendix: true,
       signature: { x1: 1475, x2: 1700, y: 495, h: 85 },
     },
 
@@ -143,6 +174,122 @@
     }
   }
 
+  // ---------- Text layout helpers ----------
+  // Splits logical-order text into lines no wider than maxW.
+  function wrap(text, font, size, maxW) {
+    const lines = [];
+    for (const para of String(text).split(/\n/)) {
+      let line = '';
+      for (const word of para.split(/\s+/).filter(Boolean)) {
+        const test = line ? line + ' ' + word : word;
+        if (!line || font.widthOfTextAtSize(test, size) <= maxW) line = test;
+        else { lines.push(line); line = word; }
+      }
+      if (line) lines.push(line);
+    }
+    return lines;
+  }
+  // Draws one line of logical-order text inside x1..x2, shrinking it if needed.
+  function drawLine(page, raw, { x1, x2, y, size, align, font, color, minScale = 0.6 }) {
+    const text = toVisual(raw);
+    const maxW = x2 - x1 - 4;
+    let w = font.widthOfTextAtSize(text, size);
+    if (w > maxW) { size = Math.max(size * minScale, size * maxW / w); w = font.widthOfTextAtSize(text, size); }
+    const x = align === 'center' ? (x1 + x2) / 2 - w / 2 : align === 'left' ? x1 + 2 : x2 - 2 - w;
+    drawVisual(page, text, x, y, size, font, color);
+  }
+
+  const SEE_APPENDIX = 'פירוט מלא בנספח';
+
+  // Writes multi-line blocks (table cells). Returns the categories whose text did not fit.
+  function drawBlocks(page, blocks, font, color) {
+    const overflow = new Set();
+    for (const b of blocks) {
+      const lineH = b.size * 1.2;
+      const maxLines = Math.max(1, Math.floor((b.yTop - b.yBottom) / lineH));
+      let lines = b.noWrap ? b.paras.filter(Boolean) : b.paras.flatMap(p => wrap(p, font, b.size, b.x2 - b.x1 - 6));
+      if (lines.length > maxLines) {
+        overflow.add(b.cat);
+        lines = lines.slice(0, maxLines - (b.kind === 'notes' ? 1 : 0));
+        if (b.kind === 'notes') lines.push(SEE_APPENDIX);
+      } else if (b.kind === 'notes' && b.many && lines.length < maxLines) {
+        lines.push(SEE_APPENDIX);
+      }
+      const center = (b.yTop + b.yBottom) / 2;
+      let y = center + (lines.length * lineH) / 2 - b.size * 0.85;
+      for (const line of lines) {
+        drawLine(page, line, { x1: b.x1, x2: b.x2, y, size: b.size, align: b.align || 'center', font, color });
+        y -= lineH;
+      }
+    }
+    return overflow;
+  }
+
+  // Extra page(s) listing every expense, added when the table cells are not enough.
+  function drawAppendix(doc, a, font, PDFLib) {
+    const [W, H] = [2052, 2993];
+    const black = PDFLib.rgb(0.1, 0.1, 0.1), ink = PDFLib.rgb(0.05, 0.12, 0.45), grey = PDFLib.rgb(0.6, 0.6, 0.6);
+    const cols = { cat: [1560, 1900], date: [1250, 1540], desc: [610, 1230], sum: [150, 590] };
+    let page, y;
+    const newPage = () => {
+      page = doc.addPage([W, H]);
+      y = H - 180;
+      drawLine(page, 'נספח לטופס התחשבנות – פירוט הוצאות', { x1: 150, x2: 1900, y, size: 60, font, color: black });
+      y -= 90;
+      const trip = [a.name, a.idNum && `ת״ז ${a.idNum}`, a.destination && `יעד: ${a.destination}`,
+        (a.depDate || a.retDate) && `${fmtDate(a.depDate)} – ${fmtDate(a.retDate)}`].filter(Boolean).join('   |   ');
+      drawLine(page, trip, { x1: 150, x2: 1900, y, size: 36, font, color: ink });
+      y -= 100;
+      const head = { cat: 'סוג ההוצאה', date: 'תאריך', desc: 'תיאור', sum: 'סכום' };
+      for (const [k, [x1, x2]] of Object.entries(cols)) drawLine(page, head[k], { x1, x2, y, size: 36, font, color: black });
+      y -= 22;
+      page.drawLine({ start: { x: 150, y }, end: { x: 1900, y }, thickness: 3, color: black });
+      y -= 60;
+    };
+    const ensure = h => { if (y - h < 200) newPage(); };
+    newPage();
+
+    const all = [];
+    for (const c of CATEGORIES) {
+      const cat = (a.expenses || {})[c.key] || {};
+      const entries = cat.entries || [];
+      const payer = c.key === 'lodging' && cat.paid === 'no' ? `שולם ע״י ${cat.payer || ''}` : '';
+      if (!entries.length && !cat.note && !payer) continue;
+      ensure(120);
+      drawLine(page, c.title, { x1: cols.cat[0], x2: cols.cat[1], y, size: 38, font, color: black });
+      if (!entries.length) y -= 55;
+      for (const e of entries) {
+        const descLines = wrap(e.desc || '', font, 34, cols.desc[1] - cols.desc[0]);
+        ensure(Math.max(1, descLines.length) * 46);
+        const date = c.key === 'lodging' ? [fmtDate(e.from), fmtDate(e.to)].filter(Boolean).join(' – ') : fmtDate(e.date);
+        drawLine(page, date, { x1: cols.date[0], x2: cols.date[1], y, size: 34, font, color: ink });
+        if (e.amount) drawLine(page, money(e.amount, e.currency), { x1: cols.sum[0], x2: cols.sum[1], y, size: 34, font, color: ink });
+        descLines.forEach((l, i) => drawLine(page, l, { x1: cols.desc[0], x2: cols.desc[1], y: y - i * 44, size: 34, font, color: ink }));
+        y -= Math.max(1, descLines.length) * 44 + 12;
+        all.push(e);
+      }
+      if (entries.length > 1) {
+        drawLine(page, 'סה״כ: ' + totals(entries).join(' + '), { x1: cols.sum[0], x2: cols.desc[1], y, size: 34, font, color: black });
+        y -= 56;
+      }
+      for (const extra of [payer, cat.note && `הערה: ${cat.note}`].filter(Boolean)) {
+        for (const l of wrap(extra, font, 34, cols.date[1] - cols.sum[0])) {
+          ensure(46);
+          drawLine(page, l, { x1: cols.sum[0], x2: cols.date[1], y, size: 34, font, color: ink });
+          y -= 46;
+        }
+      }
+      y -= 10;
+      page.drawLine({ start: { x: 150, y: y + 30 }, end: { x: 1900, y: y + 30 }, thickness: 1, color: grey });
+      y -= 30;
+    }
+    const grand = totals(all);
+    if (grand.length) {
+      ensure(80);
+      drawLine(page, 'סה״כ כל ההוצאות: ' + grand.join(' + '), { x1: 150, x2: 1900, y: y - 20, size: 40, font, color: black });
+    }
+  }
+
   // ---------- Filling ----------
   async function fill(formKey, { PDFLib, fontkit, pdfBytes, fontBytes, answers, signaturePng }) {
     const form = FORMS[formKey];
@@ -155,14 +302,14 @@
     for (const f of form.fields(answers)) {
       const raw = String(f.v ?? '').trim();
       if (!raw) continue;
-      const text = toVisual(raw);
-      const maxW = f.x2 - f.x1 - 4;
-      let size = f.size || form.size;
-      let w = font.widthOfTextAtSize(text, size);
-      if (w > maxW) { size = Math.max(size * 0.6, size * maxW / w); w = font.widthOfTextAtSize(text, size); }
-      const x = f.align === 'center' ? (f.x1 + f.x2) / 2 - w / 2 : f.x2 - 2 - w;
-      const lift = f.lift ?? form.lift;
-      drawVisual(page, text, x, f.y + lift, size, font, ink);
+      drawLine(page, raw, { x1: f.x1, x2: f.x2, y: f.y + (f.lift ?? form.lift), size: f.size || form.size, align: f.align, font, color: ink });
+    }
+
+    if (form.blocks) {
+      const blocks = form.blocks(answers);
+      const overflow = drawBlocks(page, blocks, font, ink);
+      const many = blocks.some(b => b.many);
+      if (form.appendix && (overflow.size || many)) drawAppendix(doc, answers, font, PDFLib);
     }
 
     if (signaturePng && form.signature) {
@@ -176,7 +323,7 @@
     return doc.save();
   }
 
-  const api = { FORMS, fill, toVisual, drawVisual, fmtDate };
+  const api = { FORMS, CATEGORIES, fill, toVisual, drawVisual, fmtDate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FormFiller = api;
 })(typeof window !== 'undefined' ? window : globalThis);
