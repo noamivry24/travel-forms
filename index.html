@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>טפסי נסיעה לחו"ל</title>
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <main class="wrap">
@@ -67,6 +67,15 @@
       <!-- 4. Commitment form: bank + card -->
       <section class="card" data-show="commitment">
         <h2><span class="num">4</span> חשבון בנק וכרטיס אשראי <small class="tag">לטופס משיכת אש״ל</small></h2>
+        <details class="help">
+          <summary>📘 מדריך לכרטיס האשראי הצבאי</summary>
+          <div class="help-body">
+            <a class="help-link" href="https://www.youtube.com/watch?v=4RNLYurCGIQ" target="_blank" rel="noopener">
+              <span class="help-icon">▶</span><span><strong>סרטון הדרכה</strong><small>נפתח ביוטיוב</small></span></a>
+            <a class="help-link" href="guides/card-guide.pdf" target="_blank" rel="noopener">
+              <span class="help-icon">📄</span><span><strong>מדריך למחזיקי כרטיס – אפליקציית כאל</strong><small>קובץ PDF</small></span></a>
+          </div>
+        </details>
         <div class="grid">
           <label>בנק <input name="bank" list="banks"></label>
           <label>סניף <input name="branch" inputmode="numeric"></label>
@@ -131,7 +140,7 @@
 
   <script src="lib/pdf-lib.min.js"></script>
   <script src="lib/fontkit.umd.min.js"></script>
-  <script src="fill.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="fill.js?v=7"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

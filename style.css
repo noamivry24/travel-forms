@@ -25,6 +25,17 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 Alef,
 .card h2 { margin: 0 0 16px; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: inline-grid; place-items: center; font-size: 15px; }
 .tag { font-size: 13px; font-weight: 400; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; }
+.help { margin: -4px 0 16px; }
+.help summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 700; color: var(--accent); background: var(--accent-soft); border: 1.5px solid var(--accent); border-radius: 999px; padding: 8px 18px; }
+.help summary::-webkit-details-marker { display: none; }
+.help summary::after { content: '▾'; font-size: 13px; }
+.help[open] summary::after { content: '▴'; }
+.help-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
+.help-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--ink); background: var(--card); }
+.help-link:hover { border-color: var(--accent); }
+.help-link span:last-child { display: flex; flex-direction: column; }
+.help-link small { color: var(--muted); font-size: 13px; }
+.help-icon { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
 .optional-note { background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; margin: 14px 0 6px; font-size: 15px; line-height: 1.6; }
 .optional-note small { color: var(--muted); }
 .note { color: var(--muted); font-size: 15px; margin: 4px 0 14px; }
