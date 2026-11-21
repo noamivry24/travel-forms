@@ -6,7 +6,7 @@
   <title>טפסי נסיעה לחו"ל</title>
   <link rel="icon" type="image/png" href="img/favicon.png">
   <meta name="theme-color" content="#111111">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
   <main class="wrap">
@@ -122,6 +122,17 @@
         </div>
         <p class="note">ממלאים רק את מה שרלוונטי. אם יש יותר מהוצאה אחת באותו סעיף, יתווסף לטופס עמוד נספח עם פירוט מלא.</p>
         <div class="expenses" id="expenses"></div>
+
+        <div class="receipts">
+          <h3>קבלות</h3>
+          <p class="note">מצרפים צילומים או קובצי PDF של הקבלות, והם יתווספו כעמודים בסוף הטופס. הקבצים לא עולים לשום מקום – הכל נשאר במחשב או בטלפון שלך.</p>
+          <label class="drop" id="drop">
+            <input type="file" id="receiptInput" accept="image/*,application/pdf" multiple hidden>
+            <span class="drop-icon">📎</span>
+            <span><strong>הוספת קבלות</strong><small>לחיצה לבחירת קבצים או צילום, או גרירה לכאן</small></span>
+          </label>
+          <ul class="receipt-list" id="receiptList"></ul>
+        </div>
       </section>
 
       <!-- 6. Sign -->
@@ -149,7 +160,7 @@
 
   <script src="lib/pdf-lib.min.js"></script>
   <script src="lib/fontkit.umd.min.js"></script>
-  <script src="fill.js?v=10"></script>
-  <script src="app.js?v=10"></script>
+  <script src="fill.js?v=11"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

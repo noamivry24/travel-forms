@@ -219,6 +219,73 @@
   });
   ['cvv', 'branch'].forEach(n => field(n).addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); }));
 
+  // ---------- Receipts (settlement form) ----------
+  // Files never leave the device: they are read in the browser and added as pages.
+  const receipts = []; // { id, file, isPdf, url }
+  const receiptList = document.getElementById('receiptList');
+  const drop = document.getElementById('drop');
+  const receiptInput = document.getElementById('receiptInput');
+  let receiptSeq = 0;
+  function addReceipts(files) {
+    for (const file of files) {
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+      if (!isPdf && !file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) continue;
+      const r = { id: ++receiptSeq, file, isPdf, url: isPdf ? null : URL.createObjectURL(file) };
+      receipts.push(r);
+      const li = document.createElement('li');
+      li.className = 'receipt'; li.dataset.id = r.id;
+      li.innerHTML = `
+        ${isPdf ? '<span class="thumb">PDF</span>' : `<img class="thumb" alt="">`}
+        <span class="meta">
+          ${isPdf ? '<span>קובץ PDF – יצורף כמו שהוא</span>' : '<input data-caption placeholder="תיאור (לא חובה), למשל: מונית 1/11">'}
+          <span class="fname"></span>
+        </span>
+        <button type="button" class="remove" aria-label="הסרת הקבלה" title="הסרה">×</button>`;
+      li.querySelector('.fname').textContent = file.name;
+      const img = li.querySelector('img');
+      if (img) { img.src = r.url; img.onerror = () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'thumb', textContent: 'תמונה' })); }
+      receiptList.append(li);
+    }
+  }
+  receiptInput.addEventListener('change', () => { addReceipts(receiptInput.files); receiptInput.value = ''; });
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => addReceipts(e.dataTransfer.files));
+  receiptList.addEventListener('click', e => {
+    if (!e.target.matches('.remove')) return;
+    const li = e.target.closest('.receipt'), i = receipts.findIndex(r => r.id === +li.dataset.id);
+    if (i >= 0) { if (receipts[i].url) URL.revokeObjectURL(receipts[i].url); receipts.splice(i, 1); }
+    li.remove();
+  });
+
+  // Turns photos into reasonably sized JPEGs (phone photos can be 10MB+), keeps PDFs as they are.
+  async function imageToJpeg(file) {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const max = 1800, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.82));
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+  async function prepareReceipts() {
+    const out = [], failed = [];
+    for (const r of receipts) {
+      const li = receiptList.querySelector(`[data-id="${r.id}"]`);
+      const caption = li?.querySelector('[data-caption]')?.value.trim() || '';
+      li?.querySelector('.err')?.remove();
+      try {
+        if (r.isPdf) out.push({ type: 'pdf', bytes: new Uint8Array(await r.file.arrayBuffer()), caption, name: r.file.name });
+        else out.push({ type: 'jpg', bytes: await imageToJpeg(r.file), caption, name: r.file.name });
+      } catch (err) {
+        failed.push(r.file.name);
+        li?.querySelector('.meta').insertAdjacentHTML('beforeend', '<span class="err">לא הצלחתי לקרוא את הקובץ. נסו לצלם מסך שלו או לשמור אותו כ-JPG.</span>');
+      }
+    }
+    return { out, failed };
+  }
+
   // ---------- Answers ----------
   function collect() {
     const a = {};
@@ -305,7 +372,12 @@
     try {
       const def = FormFiller.FORMS[key];
       const [pdfBytes, fontBytes] = await Promise.all([getBytes(def.file), getBytes('fonts/Alef-Regular.ttf')]);
-      const out = await FormFiller.fill(key, { PDFLib, fontkit, pdfBytes, fontBytes, answers: a, signaturePng: signaturePng() });
+      let rec = { out: [], failed: [] };
+      if (key === 'settlement' && receipts.length) { statusEl.textContent = 'מכין את הקבלות…'; rec = await prepareReceipts(); }
+      const badPdf = [];
+      const out = await FormFiller.fill(key, { PDFLib, fontkit, pdfBytes, fontBytes, answers: a, signaturePng: signaturePng(),
+        receipts: rec.out, onReceiptError: name => badPdf.push(name) });
+      const failed = [...rec.failed, ...badPdf];
       const url = URL.createObjectURL(new Blob([out], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url; link.download = `${def.fileName}${a.name ? ' - ' + a.name : ''}.pdf`;
@@ -314,7 +386,9 @@
       const cardMissing = key === 'commitment' && !(a.cardNumber && a.cardExpiry && a.cvv);
       statusEl.textContent = cardMissing
         ? '✓ הטופס הורד. שימו לב: פרטי האשראי לא מולאו – צריך להשלים אותם ידנית בקובץ לפני ההגשה.'
-        : '✓ הטופס הורד. כדאי לפתוח ולבדוק אותו לפני ההגשה.';
+        : failed.length
+          ? `✓ הטופס הורד, אבל ${failed.length === 1 ? 'קבלה אחת לא צורפה' : failed.length + ' קבלות לא צורפו'}: ${failed.join(', ')}.`
+          : `✓ הטופס הורד${rec.out.length ? ` עם ${rec.out.length === 1 ? 'קבלה אחת' : rec.out.length + ' קבלות'}` : ''}. כדאי לפתוח ולבדוק אותו לפני ההגשה.`;
     } catch (err) {
       console.error(err);
       statusEl.textContent = 'משהו השתבש: ' + err.message;

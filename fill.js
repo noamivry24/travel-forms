@@ -290,8 +290,36 @@
     }
   }
 
+  // Receipts go after the form: photos get an A4 page each (with a caption line), PDF pages are copied as-is.
+  async function addReceipts(doc, receipts, font, PDFLib, onError) {
+    const dark = PDFLib.rgb(0.1, 0.1, 0.1);
+    let n = 0;
+    for (const r of receipts) {
+      n++;
+      const caption = `קבלה ${n}${r.caption ? ' – ' + r.caption : ''}`;
+      try {
+        if (r.type === 'pdf') {
+          const src = await PDFLib.PDFDocument.load(r.bytes, { ignoreEncryption: true });
+          const pages = await doc.copyPages(src, src.getPageIndices());
+          pages.forEach(p => doc.addPage(p)); // left untouched so nothing on the receipt gets covered
+        } else {
+          const img = await doc.embedJpg(r.bytes);
+          const land = img.width > img.height;
+          const [W, H] = land ? [841.89, 595.28] : [595.28, 841.89];
+          const page = doc.addPage([W, H]);
+          drawLine(page, caption, { x1: 30, x2: W - 30, y: H - 34, size: 13, font, color: dark });
+          const top = H - 50, k = Math.min((W - 60) / img.width, (top - 30) / img.height);
+          const w = img.width * k, h = img.height * k;
+          page.drawImage(img, { x: (W - w) / 2, y: 30 + (top - 30 - h) / 2, width: w, height: h });
+        }
+      } catch (err) {
+        if (onError) onError(r.name || caption, err); else throw err;
+      }
+    }
+  }
+
   // ---------- Filling ----------
-  async function fill(formKey, { PDFLib, fontkit, pdfBytes, fontBytes, answers, signaturePng }) {
+  async function fill(formKey, { PDFLib, fontkit, pdfBytes, fontBytes, answers, signaturePng, receipts, onReceiptError }) {
     const form = FORMS[formKey];
     const doc = await PDFLib.PDFDocument.load(pdfBytes);
     doc.registerFontkit(fontkit);
@@ -319,6 +347,8 @@
       const w = img.width * scale, h = img.height * scale;
       page.drawImage(img, { x: (s.x1 + s.x2) / 2 - w / 2, y: s.y + 1, width: w, height: h });
     }
+
+    if (receipts && receipts.length) await addReceipts(doc, receipts, font, PDFLib, onReceiptError);
 
     return doc.save();
   }
