@@ -43,7 +43,7 @@
     { key: 'lodging', title: 'לינה', sub: 'עם קבלה מפורטת', add: 'הוספת מלון' },
     { key: 'car', title: 'הוצאות רכב בחו"ל', sub: 'דלק, חניה, השכרה', add: 'הוספת הוצאה', desc: 'למשל: דלק / חניה' },
     { key: 'taxiIL', title: 'מוניות בארץ', sub: 'לשדה התעופה וממנו', add: 'הוספת נסיעה', desc: 'למשל: מהבית לנתב״ג', currency: 'ILS' },
-    { key: 'taxiAbroad', title: 'מוניות בחו"ל', sub: 'לציין יעד ומטרה', add: 'הוספת נסיעה', desc: 'מאיפה לאן ולמה' },
+    { key: 'taxiAbroad', title: 'מוניות בחו"ל', sub: 'לשדה התעופה וממנו', add: 'הוספת נסיעה', noDesc: true },
     { key: 'other', title: 'אחר', sub: 'בתיאום מראש: כנס, קורס, מזוודה', add: 'הוספת הוצאה', desc: 'מה זה היה' },
   ];
   const expBox = document.getElementById('expenses');
@@ -73,8 +73,8 @@
         <label>מתאריך <input type="date" data-f="from"></label>
         <label>עד תאריך <input type="date" data-f="to"></label>
         <label class="wide">שם המלון <input data-f="desc"></label>` : `
-        <label>תאריך <input type="date" data-f="date"></label>
-        <label class="wide">תיאור <input data-f="desc" placeholder="${c.desc}"></label>`;
+        <label>תאריך <input type="date" data-f="date"></label>${c.noDesc ? '' : `
+        <label class="wide">תיאור <input data-f="desc" placeholder="${c.desc}"></label>`}`;
     catEl.querySelector('.entries').insertAdjacentHTML('beforeend', `
       <div class="entry">${fields}
         <label>סכום <input data-f="amount" inputmode="decimal" dir="ltr"></label>

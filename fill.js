@@ -79,25 +79,26 @@
   const F1 = { size: 38, lift: 9 };
   const H1 = 2993;
 
-  function settlementBlocks(a) {
+  // For each category: one line per expense (date | description | amount), then payer/note lines.
+  function settlementRows(a) {
     const ex = a.expenses || {};
-    const blocks = [];
-    for (const c of CATEGORIES) {
+    return CATEGORIES.map(c => {
       const cat = ex[c.key] || {};
-      const entries = cat.entries || [];
-      const drift = ((c.top + c.bottom) / 2 - 1100) * 0.018; // the scan is slightly tilted
-      const yTop = H1 - c.top - 14, yBottom = H1 - c.bottom + 14;
-      const dates = c.key === 'lodging' ? entries.flatMap(e => [e.from, e.to]) : entries.map(e => e.date);
+      const entries = (cat.entries || []).map(e => ({
+        date: c.key === 'lodging' ? dateSpan([e.from, e.to]) : shortDate(e.date),
+        desc: e.desc || '',
+        sum: e.amount ? money(e.amount, e.currency) : '',
+      }));
       const notes = [];
       if (c.key === 'lodging' && cat.paid === 'no') notes.push(`שולם ע״י ${cat.payer || '__________'}`);
-      if (entries.length === 1 && entries[0].desc) notes.push(entries[0].desc);
       if (cat.note) notes.push(cat.note);
-      const common = { cat: c.key, yTop, yBottom, many: entries.length > 1 };
-      blocks.push({ ...common, kind: 'date', paras: [dateSpan(dates)], x1: 1522 - drift, x2: 1653 - drift, size: 28 });
-      blocks.push({ ...common, kind: 'notes', paras: notes, x1: 1140 - drift, x2: 1517 - drift, size: 30, align: 'right' });
-      blocks.push({ ...common, kind: 'sum', paras: totals(entries), x1: 1022 - drift, x2: 1135 - drift, size: 28, noWrap: true });
-    }
-    return blocks;
+      const drift = ((c.top + c.bottom) / 2 - 1100) * 0.018; // the scan is slightly tilted
+      return {
+        key: c.key, entries, notes,
+        yTop: H1 - c.top - 12, yBottom: H1 - c.bottom + 12,
+        cols: { date: [1522 - drift, 1653 - drift], notes: [1140 - drift, 1517 - drift], sum: [1022 - drift, 1135 - drift] },
+      };
+    });
   }
 
   const FORMS = {
@@ -125,7 +126,7 @@
         { v: a.role, x1: 455, x2: 585, y: 548 },
         { v: a.rank, x1: 230, x2: 335, y: 546 },
       ],
-      blocks: settlementBlocks,
+      rows: settlementRows,
       appendix: true,
       signature: { x1: 1475, x2: 1700, y: 495, h: 85 },
     },
@@ -201,25 +202,47 @@
 
   const SEE_APPENDIX = 'פירוט מלא בנספח';
 
-  // Writes multi-line blocks (table cells). Returns the categories whose text did not fit.
-  function drawBlocks(page, blocks, font, color) {
+  // Writes the expenses table: each expense on its own line, lined up across the columns.
+  // Text shrinks step by step to fit the cell; only if it still does not fit is the category
+  // marked for the details page. Returns the set of categories that did not fit.
+  function drawRows(page, rows, font, color) {
     const overflow = new Set();
-    for (const b of blocks) {
-      const lineH = b.size * 1.2;
-      const maxLines = Math.max(1, Math.floor((b.yTop - b.yBottom) / lineH));
-      let lines = b.noWrap ? b.paras.filter(Boolean) : b.paras.flatMap(p => wrap(p, font, b.size, b.x2 - b.x1 - 6));
-      if (lines.length > maxLines) {
-        overflow.add(b.cat);
-        lines = lines.slice(0, maxLines - (b.kind === 'notes' ? 1 : 0));
-        if (b.kind === 'notes') lines.push(SEE_APPENDIX);
-      } else if (b.kind === 'notes' && b.many && lines.length < maxLines) {
-        lines.push(SEE_APPENDIX);
+    for (const r of rows) {
+      if (!r.entries.length && !r.notes.length) continue;
+      const avail = r.yTop - r.yBottom;
+      const noteW = r.cols.notes[1] - r.cols.notes[0] - 6;
+      const anyDesc = r.entries.some(e => e.desc);
+      let layout;
+      for (const size of [30, 27, 24, 22, 20]) {
+        const lineH = size * 1.15;
+        // Notes column: entry descriptions on their own lines (if any), then payer/note text.
+        const noteLines = r.notes.flatMap(n => wrap(n, font, size, noteW));
+        const lead = anyDesc ? r.entries.length : 0;
+        const total = Math.max(r.entries.length, lead + noteLines.length);
+        layout = { size, lineH, noteLines, lead, total, fits: total * lineH <= avail };
+        if (layout.fits) break;
       }
-      const center = (b.yTop + b.yBottom) / 2;
-      let y = center + (lines.length * lineH) / 2 - b.size * 0.85;
-      for (const line of lines) {
-        drawLine(page, line, { x1: b.x1, x2: b.x2, y, size: b.size, align: b.align || 'center', font, color });
-        y -= lineH;
+      let { size, lineH, noteLines, lead, total } = layout;
+      const maxLines = Math.max(1, Math.floor(avail / lineH));
+      let shown = r.entries.length;
+      if (!layout.fits) {
+        overflow.add(r.key);
+        // Keep what fits and point to the details page on the last line.
+        shown = Math.min(shown, maxLines - 1);
+        lead = anyDesc ? shown : 0;
+        total = maxLines;
+        noteLines = noteLines.slice(0, Math.max(0, maxLines - lead - 1)).concat(SEE_APPENDIX);
+      }
+      let y = (r.yTop + r.yBottom) / 2 + (total * lineH) / 2 - size * 0.85;
+      for (let i = 0; i < total; i++, y -= lineH) {
+        const e = r.entries[i];
+        if (e && i < shown) {
+          if (e.date) drawLine(page, e.date, { x1: r.cols.date[0] + 4, x2: r.cols.date[1] - 4, y, size, align: 'center', font, color, minScale: 0.4 });
+          if (e.sum) drawLine(page, e.sum, { x1: r.cols.sum[0] + 4, x2: r.cols.sum[1] - 4, y, size, align: 'center', font, color, minScale: 0.4 });
+          if (anyDesc && e.desc) drawLine(page, e.desc, { x1: r.cols.notes[0] + 4, x2: r.cols.notes[1] - 6, y, size, align: 'right', font, color, minScale: 0.5 });
+        }
+        const n = noteLines[i - lead];
+        if (n && i >= lead) drawLine(page, n, { x1: r.cols.notes[0], x2: r.cols.notes[1], y, size, align: 'right', font, color });
       }
     }
     return overflow;
@@ -333,11 +356,10 @@
       drawLine(page, raw, { x1: f.x1, x2: f.x2, y: f.y + (f.lift ?? form.lift), size: f.size || form.size, align: f.align, font, color: ink });
     }
 
-    if (form.blocks) {
-      const blocks = form.blocks(answers);
-      const overflow = drawBlocks(page, blocks, font, ink);
-      const many = blocks.some(b => b.many);
-      if (form.appendix && (overflow.size || many)) drawAppendix(doc, answers, font, PDFLib);
+    if (form.rows) {
+      // The details page is a last resort, only when the table cells really cannot hold everything.
+      const overflow = drawRows(page, form.rows(answers), font, ink);
+      if (form.appendix && overflow.size) drawAppendix(doc, answers, font, PDFLib);
     }
 
     if (signaturePng && form.signature) {
