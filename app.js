@@ -71,8 +71,7 @@
     const cur = c.currency || lastCurrency;
     const fields = lodging ? `
         <label>מתאריך <input type="date" data-f="from"></label>
-        <label>עד תאריך <input type="date" data-f="to"></label>
-        <label class="wide">שם המלון <input data-f="desc"></label>` : `
+        <label>עד תאריך <input type="date" data-f="to"></label>` : `
         <label>תאריך <input type="date" data-f="date"></label>${c.noDesc ? '' : `
         <label class="wide">תיאור <input data-f="desc" placeholder="${c.desc}"></label>`}`;
     catEl.querySelector('.entries').insertAdjacentHTML('beforeend', `
@@ -237,7 +236,7 @@
       li.innerHTML = `
         ${isPdf ? '<span class="thumb">PDF</span>' : `<img class="thumb" alt="">`}
         <span class="meta">
-          ${isPdf ? '<span>קובץ PDF – יצורף כמו שהוא</span>' : '<input data-caption placeholder="תיאור (לא חובה), למשל: מונית 1/11">'}
+          <input data-caption placeholder="תיאור (לא חובה), למשל: מונית 1/11">
           <span class="fname"></span>
         </span>
         <button type="button" class="remove" aria-label="הסרת הקבלה" title="הסרה">×</button>`;
@@ -261,7 +260,7 @@
   // Turns photos into reasonably sized JPEGs (phone photos can be 10MB+), keeps PDFs as they are.
   async function imageToJpeg(file) {
     const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-    const max = 1800, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const max = 1400, k = Math.min(1, max / Math.max(bmp.width, bmp.height)); // 4 receipts share a page
     const c = document.createElement('canvas');
     c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
     const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);

@@ -313,32 +313,45 @@
     }
   }
 
-  // Receipts go after the form: photos get an A4 page each (with a caption line), PDF pages are copied as-is.
+  // Receipts go after the form as a collage: 4 per A4 page (2 x 2), each with a "קבלה N" label.
+  // Photos and every page of a PDF receipt each take one cell.
   async function addReceipts(doc, receipts, font, PDFLib, onError) {
-    const dark = PDFLib.rgb(0.1, 0.1, 0.1);
+    const dark = PDFLib.rgb(0.1, 0.1, 0.1), frame = PDFLib.rgb(0.8, 0.8, 0.8);
+    const items = [];
     let n = 0;
     for (const r of receipts) {
-      n++;
-      const caption = `קבלה ${n}${r.caption ? ' – ' + r.caption : ''}`;
       try {
         if (r.type === 'pdf') {
           const src = await PDFLib.PDFDocument.load(r.bytes, { ignoreEncryption: true });
-          const pages = await doc.copyPages(src, src.getPageIndices());
-          pages.forEach(p => doc.addPage(p)); // left untouched so nothing on the receipt gets covered
+          const pages = await doc.embedPdf(src, src.getPageIndices());
+          n++;
+          pages.forEach((p, i) => items.push({ draw: p, w: p.width, h: p.height, isPage: true,
+            label: `קבלה ${n}${r.caption ? ' – ' + r.caption : ''}${pages.length > 1 ? ` (עמוד ${i + 1}/${pages.length})` : ''}` }));
         } else {
           const img = await doc.embedJpg(r.bytes);
-          const land = img.width > img.height;
-          const [W, H] = land ? [841.89, 595.28] : [595.28, 841.89];
-          const page = doc.addPage([W, H]);
-          drawLine(page, caption, { x1: 30, x2: W - 30, y: H - 34, size: 13, font, color: dark });
-          const top = H - 50, k = Math.min((W - 60) / img.width, (top - 30) / img.height);
-          const w = img.width * k, h = img.height * k;
-          page.drawImage(img, { x: (W - w) / 2, y: 30 + (top - 30 - h) / 2, width: w, height: h });
+          n++;
+          items.push({ draw: img, w: img.width, h: img.height, label: `קבלה ${n}${r.caption ? ' – ' + r.caption : ''}` });
         }
       } catch (err) {
-        if (onError) onError(r.name || caption, err); else throw err;
+        if (onError) onError(r.name || `קבלה ${n + 1}`, err); else throw err;
       }
     }
+    const W = 595.28, H = 841.89, M = 24, G = 14, cols = 2, rows = 2;
+    const cw = (W - 2 * M - G) / cols, ch = (H - 2 * M - G) / rows, labelH = 18;
+    let page;
+    items.forEach((it, i) => {
+      const slot = i % (cols * rows);
+      if (slot === 0) page = doc.addPage([W, H]);
+      const col = slot % cols, row = Math.floor(slot / cols);
+      const x = W - M - (col + 1) * cw - col * G; // right to left, like Hebrew reading order
+      const yTop = H - M - row * (ch + G);
+      drawLine(page, it.label, { x1: x, x2: x + cw, y: yTop - 12, size: 11, font, color: dark });
+      const boxH = ch - labelH, k = Math.min(cw / it.w, boxH / it.h);
+      const w = it.w * k, h = it.h * k, ix = x + (cw - w) / 2, iy = yTop - labelH - boxH + (boxH - h) / 2;
+      if (it.isPage) page.drawPage(it.draw, { x: ix, y: iy, width: w, height: h });
+      else page.drawImage(it.draw, { x: ix, y: iy, width: w, height: h });
+      page.drawRectangle({ x: ix, y: iy, width: w, height: h, borderColor: frame, borderWidth: 0.6 });
+    });
   }
 
   // ---------- Filling ----------
