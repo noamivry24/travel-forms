@@ -119,7 +119,10 @@ textarea:focus { outline: 2px solid var(--accent-line); border-color: var(--acce
 .receipt .meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .receipt .fname { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .receipt input { min-height: 38px; padding: 6px 10px; font-size: 15px; }
-.receipt .remove { position: static; }
+.receipt-actions { display: flex; gap: 6px; }
+.receipt .remove, .receipt .rotate { position: static; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; }
+.receipt .rotate:hover { color: var(--accent-text); border-color: var(--accent-line); }
+.receipt img.thumb { transition: transform .2s; }
 .receipt .err { color: var(--warn); font-size: 13px; }
 [data-show].off { display: none !important; }
 

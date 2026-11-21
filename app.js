@@ -229,7 +229,7 @@
     for (const file of files) {
       const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
       if (!isPdf && !file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) continue;
-      const r = { id: ++receiptSeq, file, isPdf, url: isPdf ? null : URL.createObjectURL(file) };
+      const r = { id: ++receiptSeq, file, isPdf, url: isPdf ? null : URL.createObjectURL(file), rot: 0 };
       receipts.push(r);
       const li = document.createElement('li');
       li.className = 'receipt'; li.dataset.id = r.id;
@@ -239,35 +239,91 @@
           <input data-caption placeholder="תיאור (לא חובה), למשל: מונית 1/11">
           <span class="fname"></span>
         </span>
-        <button type="button" class="remove" aria-label="הסרת הקבלה" title="הסרה">×</button>`;
+        <span class="receipt-actions">
+          ${isPdf ? '' : '<button type="button" class="rotate" aria-label="סיבוב התמונה" title="סיבוב">↻</button>'}
+          <button type="button" class="remove" aria-label="הסרת הקבלה" title="הסרה">×</button>
+        </span>`;
       li.querySelector('.fname').textContent = file.name;
       const img = li.querySelector('img');
       if (img) { img.src = r.url; img.onerror = () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'thumb', textContent: 'תמונה' })); }
       receiptList.append(li);
+      // A receipt photographed sideways (text running up/down) is turned upright automatically.
+      if (!isPdf) r.ready = detectSideways(file).then(side => { if (side) { r.rot = 90; showRotation(r); } }).catch(() => {});
+
     }
   }
   receiptInput.addEventListener('change', () => { addReceipts(receiptInput.files); receiptInput.value = ''; });
   ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
   drop.addEventListener('drop', e => addReceipts(e.dataTransfer.files));
+  function showRotation(r) {
+    const img = receiptList.querySelector(`[data-id="${r.id}"] img.thumb`);
+    if (img) img.style.transform = r.rot ? `rotate(${r.rot}deg)` : '';
+  }
   receiptList.addEventListener('click', e => {
+    if (e.target.matches('.rotate')) {
+      const r = receipts.find(x => x.id === +e.target.closest('.receipt').dataset.id);
+      if (r) { r.rot = (r.rot + 90) % 360; r.ready = null; showRotation(r); }
+      return;
+    }
     if (!e.target.matches('.remove')) return;
     const li = e.target.closest('.receipt'), i = receipts.findIndex(r => r.id === +li.dataset.id);
     if (i >= 0) { if (receipts[i].url) URL.revokeObjectURL(receipts[i].url); receipts.splice(i, 1); }
     li.remove();
   });
 
-  // Turns photos into reasonably sized JPEGs (phone photos can be 10MB+), keeps PDFs as they are.
-  async function imageToJpeg(file) {
+  // Turns photos into reasonably sized JPEGs (phone photos can be 10MB+), rotated as chosen.
+  async function imageToJpeg(file, rot = 0) {
     const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
     const max = 1400, k = Math.min(1, max / Math.max(bmp.width, bmp.height)); // 4 receipts share a page
+    const w = Math.round(bmp.width * k), h = Math.round(bmp.height * k), side = rot % 180 !== 0;
     const c = document.createElement('canvas');
-    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.width = side ? h : w; c.height = side ? w : h;
     const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-    g.drawImage(bmp, 0, 0, c.width, c.height);
+    g.translate(c.width / 2, c.height / 2); g.rotate(rot * Math.PI / 180);
+    g.drawImage(bmp, -w / 2, -h / 2, w, h);
     const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.82));
     return new Uint8Array(await blob.arrayBuffer());
   }
+
+  // Guesses whether the text in a photo runs vertically (receipt shot sideways).
+  // Between lines of text there are rows with no ink at all. If instead there are
+  // many ink-free columns, the text lines run up/down and the photo is sideways.
+  // Measured in 6 narrow strips so a slightly tilted photo still works.
+  async function detectSideways(file) {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const S = 600, N = 6, k = S / Math.max(bmp.width, bmp.height);
+    const W = Math.max(1, Math.round(bmp.width * k)), H = Math.max(1, Math.round(bmp.height * k));
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H).data, gray = new Float32Array(W * H);
+    for (let i = 0; i < W * H; i++) gray[i] = 0.3 * d[i * 4] + 0.59 * d[i * 4 + 1] + 0.11 * d[i * 4 + 2];
+    const paper = Float32Array.from(gray).sort()[Math.floor(W * H * 0.9)]; // brightness of the paper
+    const I = new Float64Array((W + 1) * (H + 1)); // integral image for fast local averages
+    for (let y = 0; y < H; y++) for (let x = 0, row = 0; x < W; x++) { row += gray[y * W + x]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + row; }
+    const R = Math.round(S / 60);
+    const rowS = Array.from({ length: N }, () => new Float32Array(H)), colS = Array.from({ length: N }, () => new Float32Array(W));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const x0 = Math.max(0, x - R), x1 = Math.min(W, x + R + 1), y0 = Math.max(0, y - R), y1 = Math.min(H, y + R + 1);
+      const m = (I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+      // ink = darker than its surroundings, on the paper (not the table it lies on)
+      if (m > paper * 0.8 && gray[y * W + x] < m - 20) { rowS[Math.min(N - 1, Math.floor(x * N / W))][y]++; colS[Math.min(N - 1, Math.floor(y * N / H))][x]++; }
+    }
+    const emptyShare = p => {
+      let tot = 0, mx = 0;
+      for (const v of p) { tot += v; if (v > mx) mx = v; }
+      if (tot < 20) return null;
+      let acc = 0, a = 0, b = p.length - 1;
+      for (let i = 0; i < p.length; i++) { acc += p[i]; if (acc < tot * 0.03) a = i; if (acc <= tot * 0.97) b = i; }
+      let e = 0;
+      for (let i = a; i <= b; i++) if (p[i] <= mx * 0.03) e++;
+      return e / (b - a + 1);
+    };
+    const avg = list => { const v = list.map(emptyShare).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : 0; };
+    const emptyRows = avg(rowS), emptyCols = avg(colS);
+    return emptyCols > emptyRows + 0.1;
+  }
+
   async function prepareReceipts() {
     const out = [], failed = [];
     for (const r of receipts) {
@@ -276,7 +332,7 @@
       li?.querySelector('.err')?.remove();
       try {
         if (r.isPdf) out.push({ type: 'pdf', bytes: new Uint8Array(await r.file.arrayBuffer()), caption, name: r.file.name });
-        else out.push({ type: 'jpg', bytes: await imageToJpeg(r.file), caption, name: r.file.name });
+        else { if (r.ready) await r.ready; out.push({ type: 'jpg', bytes: await imageToJpeg(r.file, r.rot), caption, name: r.file.name }); }
       } catch (err) {
         failed.push(r.file.name);
         li?.querySelector('.meta').insertAdjacentHTML('beforeend', '<span class="err">לא הצלחתי לקרוא את הקובץ. נסו לצלם מסך שלו או לשמור אותו כ-JPG.</span>');

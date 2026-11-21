@@ -336,21 +336,32 @@
         if (onError) onError(r.name || `קבלה ${n + 1}`, err); else throw err;
       }
     }
-    const W = 595.28, H = 841.89, M = 24, G = 14, cols = 2, rows = 2;
-    const cw = (W - 2 * M - G) / cols, ch = (H - 2 * M - G) / rows, labelH = 18;
+    // Pack into rows: a wide (landscape) receipt takes a whole row = half a page,
+    // tall ones go two to a row. A tall receipt may move up to fill a half-empty row.
+    const wide = it => it.w > it.h * 1.15;
+    const queue = items.slice(), rowsList = [];
+    while (queue.length) {
+      const it = queue.shift();
+      if (wide(it)) { rowsList.push([it]); continue; }
+      const j = queue.findIndex(x => !wide(x));
+      rowsList.push(j >= 0 ? [it, queue.splice(j, 1)[0]] : [it]);
+    }
+    const W = 595.28, H = 841.89, M = 24, G = 14;
+    const cw = (W - 2 * M - G) / 2, ch = (H - 2 * M - G) / 2, labelH = 18;
     let page;
-    items.forEach((it, i) => {
-      const slot = i % (cols * rows);
-      if (slot === 0) page = doc.addPage([W, H]);
-      const col = slot % cols, row = Math.floor(slot / cols);
-      const x = W - M - (col + 1) * cw - col * G; // right to left, like Hebrew reading order
-      const yTop = H - M - row * (ch + G);
-      drawLine(page, it.label, { x1: x, x2: x + cw, y: yTop - 12, size: 11, font, color: dark });
-      const boxH = ch - labelH, k = Math.min(cw / it.w, boxH / it.h);
-      const w = it.w * k, h = it.h * k, ix = x + (cw - w) / 2, iy = yTop - labelH - boxH + (boxH - h) / 2;
+    const place = (it, x, yTop, boxW) => {
+      drawLine(page, it.label, { x1: x, x2: x + boxW, y: yTop - 12, size: 11, font, color: dark });
+      const boxH = ch - labelH, k = Math.min(boxW / it.w, boxH / it.h);
+      const w = it.w * k, h = it.h * k, ix = x + (boxW - w) / 2, iy = yTop - labelH - boxH + (boxH - h) / 2;
       if (it.isPage) page.drawPage(it.draw, { x: ix, y: iy, width: w, height: h });
       else page.drawImage(it.draw, { x: ix, y: iy, width: w, height: h });
       page.drawRectangle({ x: ix, y: iy, width: w, height: h, borderColor: frame, borderWidth: 0.6 });
+    };
+    rowsList.forEach((row, i) => {
+      if (i % 2 === 0) page = doc.addPage([W, H]);
+      const yTop = H - M - (i % 2) * (ch + G);
+      if (row.length === 1 && wide(row[0])) place(row[0], M, yTop, W - 2 * M);
+      else row.forEach((it, c) => place(it, W - M - (c + 1) * cw - c * G, yTop, cw)); // right to left
     });
   }
 
