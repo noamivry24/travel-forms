@@ -46,6 +46,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 Alef,
 .help-link span:last-child { display: flex; flex-direction: column; }
 .help-link small { color: var(--muted); font-size: 13px; }
 .help-icon { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); }
+.must { border: 2px solid var(--red); background: var(--warn-soft); border-radius: 12px; padding: 12px 14px; margin: 14px 0 6px; }
+.must p { margin: 0 0 10px; line-height: 1.6; color: var(--ink); }
+.must-check { flex-direction: row; align-items: flex-start; gap: 10px; font-size: 16px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.must-check input { width: 20px; height: 20px; min-height: 0; margin-top: 2px; flex: none; accent-color: var(--red); }
+.must.shake { animation: shake .4s; }
+.must.ok { border-color: var(--ok); }
+@keyframes shake { 25% { transform: translateX(6px); } 50% { transform: translateX(-6px); } 75% { transform: translateX(3px); } }
 .optional-note { background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; margin: 14px 0 6px; font-size: 15px; line-height: 1.6; }
 .optional-note small { color: var(--muted); }
 .note { color: var(--muted); font-size: 15px; margin: 4px 0 14px; }

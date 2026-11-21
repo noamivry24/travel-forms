@@ -412,6 +412,14 @@
     const key = btn.dataset.form;
     const a = collect();
 
+    // Hard requirement (cannot be skipped): confirm the bank account approval form will be sent.
+    if (key === 'commitment' && !document.getElementById('bankAck').checked) {
+      const box = document.getElementById('bankNotice');
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+      statusEl.textContent = 'לפני ההורדה צריך לאשר שקראת: יש לשלוח גם טופס אישור ניהול חשבון בנק לקצין הסימולטורים.';
+      return;
+    }
     const missing = missingFor(key, a);
     form.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
     [...REQUIRED.common, ...REQUIRED[key]].forEach(([n]) => { if (!a[n]) field(n).classList.add('invalid'); });
@@ -456,6 +464,11 @@
     const f = d.querySelector('iframe[data-src]');
     if (d.open && f && !f.src) f.src = f.dataset.src;
   }));
+
+  document.getElementById('bankAck').addEventListener('change', e => {
+    document.getElementById('bankNotice').classList.toggle('ok', e.target.checked);
+    if (e.target.checked) statusEl.textContent = '';
+  });
 
   // ---------- Start ----------
   field('fillDate').value = new Date().toLocaleDateString('en-CA');

@@ -6,7 +6,7 @@
   <title>טפסי נסיעה לחו"ל</title>
   <link rel="icon" type="image/png" href="img/favicon.png">
   <meta name="theme-color" content="#111111">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <main class="wrap">
@@ -90,6 +90,11 @@
           <label>סניף <input name="branch" inputmode="numeric"></label>
           <label>מספר חשבון <input name="account" inputmode="numeric" dir="ltr"></label>
         </div>
+        <div class="must" id="bankNotice">
+          <p><strong>⚠️ חובה: טופס אישור ניהול חשבון בנק</strong><br>
+            בנוסף לטופס הזה, צריך לשלוח לקצין הסימולטורים גם <strong>טופס אישור ניהול חשבון בנק</strong>.</p>
+          <label class="must-check"><input type="checkbox" id="bankAck"> קראתי, ואשלח גם טופס אישור ניהול חשבון בנק לקצין הסימולטורים</label>
+        </div>
         <p class="optional-note">🔒 <strong>פרטי האשראי הם חלק מחייב בטופס,</strong> אבל אתם בוחרים איך למלא אותם:<br>
           אפשר להקליד אותם כאן, או להשאיר את השדות ריקים ולכתוב אותם ידנית בקובץ אחרי ההורדה.<br>
           <small>הפרטים לא נשלחים ולא נשמרים בשום מקום, אבל אם אתם מעדיפים שלא להקליד אותם באתר – זו האפשרות השנייה.</small></p>
@@ -160,7 +165,7 @@
 
   <script src="lib/pdf-lib.min.js"></script>
   <script src="lib/fontkit.umd.min.js"></script>
-  <script src="fill.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="fill.js?v=15"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
