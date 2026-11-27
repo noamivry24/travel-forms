@@ -6,7 +6,7 @@
   <title>טפסי נסיעה לחו"ל</title>
   <link rel="icon" type="image/png" href="img/favicon.png">
   <meta name="theme-color" content="#111111">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
   <main class="wrap">
@@ -90,11 +90,6 @@
           <label>סניף <input name="branch" inputmode="numeric"></label>
           <label>מספר חשבון <input name="account" inputmode="numeric" dir="ltr"></label>
         </div>
-        <div class="must" id="bankNotice">
-          <p><strong>⚠️ חובה: טופס אישור ניהול חשבון בנק</strong><br>
-            בנוסף לטופס הזה, צריך לשלוח לקצין הסימולטורים גם <strong>טופס אישור ניהול חשבון בנק</strong>.</p>
-          <label class="must-check"><input type="checkbox" id="bankAck"> קראתי, ואשלח גם טופס אישור ניהול חשבון בנק לקצין הסימולטורים</label>
-        </div>
         <p class="optional-note">🔒 <strong>פרטי האשראי הם חלק מחייב בטופס,</strong> אבל אתם בוחרים איך למלא אותם:<br>
           אפשר להקליד אותם כאן, או להשאיר את השדות ריקים ולכתוב אותם ידנית בקובץ אחרי ההורדה.<br>
           <small>הפרטים לא נשלחים ולא נשמרים בשום מקום, אבל אם אתם מעדיפים שלא להקליד אותם באתר – זו האפשרות השנייה.</small></p>
@@ -126,6 +121,18 @@
           <label>מטבע <span class="cur-slot" data-name="advanceCurrency" data-default="USD"></span></label>
         </div>
         <p class="note">ממלאים רק את מה שרלוונטי. כל הוצאה נרשמת בשורה משלה בטבלה של הטופס.</p>
+        <div class="cat vacation" id="vacation">
+          <h3>חופשה במהלך המשלחת</h3>
+          <div class="question">היית בחופשה במהלך המשלחת?
+            <label class="pill"><input type="radio" name="vacation" value="yes"> כן</label>
+            <label class="pill"><input type="radio" name="vacation" value="no"> לא</label>
+          </div>
+          <div class="vac-part" hidden>
+            <p class="note">באילו תאריכים? אפשר להוסיף כמה טווחים.</p>
+            <div class="entries" id="vacEntries"></div>
+            <button type="button" class="add" id="vacAdd">+ הוספת תאריכים</button>
+          </div>
+        </div>
         <div class="expenses" id="expenses"></div>
 
         <div class="receipts">
@@ -154,6 +161,11 @@
       </section>
 
       <section class="card actions">
+        <div class="must" id="bankNotice">
+          <p><strong>⚠️ חובה: טופס אישור ניהול חשבון בנק</strong><br>
+            בנוסף לטופס, צריך לשלוח לקצין הסימולטורים גם <strong>טופס אישור ניהול חשבון בנק</strong>.</p>
+          <label class="must-check"><input type="checkbox" id="bankAck"> קראתי, ואשלח גם טופס אישור ניהול חשבון בנק לקצין הסימולטורים</label>
+        </div>
         <div id="missing" class="missing" hidden></div>
         <div class="buttons" id="buttons"></div>
         <p class="status" id="status" role="status"></p>
@@ -165,7 +177,7 @@
 
   <script src="lib/pdf-lib.min.js"></script>
   <script src="lib/fontkit.umd.min.js"></script>
-  <script src="fill.js?v=15"></script>
-  <script src="app.js?v=15"></script>
+  <script src="fill.js?v=16"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>

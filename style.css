@@ -46,7 +46,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 Alef,
 .help-link span:last-child { display: flex; flex-direction: column; }
 .help-link small { color: var(--muted); font-size: 13px; }
 .help-icon { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); }
-.must { border: 2px solid var(--red); background: var(--warn-soft); border-radius: 12px; padding: 12px 14px; margin: 14px 0 6px; }
+.must { border: 2px solid var(--red); background: var(--warn-soft); border-radius: 12px; padding: 12px 14px; margin: 0 0 14px; }
 .must p { margin: 0 0 10px; line-height: 1.6; color: var(--ink); }
 .must-check { flex-direction: row; align-items: flex-start; gap: 10px; font-size: 16px; font-weight: 700; color: var(--ink); cursor: pointer; }
 .must-check input { width: 20px; height: 20px; min-height: 0; margin-top: 2px; flex: none; accent-color: var(--red); }
@@ -78,6 +78,7 @@ input[dir=ltr]:focus, input[dir=ltr]:not(:placeholder-shown) { text-align: left;
 .choice-body { display: flex; flex-direction: column; }
 .choice small { color: var(--muted); }
 
+.vacation { margin-bottom: 14px; }
 .expenses { display: flex; flex-direction: column; gap: 14px; }
 .cat { border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
 .cat h3 { margin: 0 0 10px; font-size: 18px; }

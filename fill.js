@@ -20,7 +20,12 @@
       if (cls[i] !== 'N') continue;
       let p = i - 1; while (p >= 0 && cls[p] === 'N') p--;
       let n = i + 1; while (n < cls.length && cls[n] === 'N') n++;
-      cls[i] = p >= 0 && n < cls.length && cls[p] === 'L' && cls[n] === 'L' ? 'L' : 'R';
+      // Joined only when it sits inside one LTR word/number: between two Latin letters
+      // (e.g. "a@b.com", "Hotel Ibis"), or a single separator inside a number/date ("5/11", "1,500").
+      // Lists like "5/11-7/11, 9/11" are kept as separate items in right-to-left order.
+      const letters = p >= 0 && n < cls.length && !/\d/.test(chars[p]) && !/\d/.test(chars[n]);
+      const sep = n - p - 1 === 1 && chars[i] !== ' ';
+      cls[i] = p >= 0 && n < cls.length && cls[p] === 'L' && cls[n] === 'L' && (letters || sep) ? 'L' : 'R';
     }
     const runs = [];
     chars.forEach((c, i) => {
@@ -64,6 +69,13 @@
     const d = dates.filter(Boolean).sort();
     if (!d.length) return '';
     return d[0] === d[d.length - 1] ? shortDate(d[0]) : `${shortDate(d[0])}-${shortDate(d[d.length - 1])}`;
+  }
+
+  function vacationText(v) {
+    if (!v || !v.answer) return '';
+    if (v.answer === 'no') return 'חופשה במהלך המשלחת: לא';
+    const ranges = (v.ranges || []).map(r => dateSpan([r.from, r.to || r.from])).filter(Boolean);
+    return `חופשה במהלך המשלחת: כן${ranges.length ? ', בתאריכים ' + ranges.join(', ') : ''}`;
   }
 
   // Expense categories, in table order. top/bottom are the row edges on the scan (from the top).
@@ -120,6 +132,8 @@
         { v: a.phone, x1: 770, x2: 1050, y: 2318 },
         { v: a.email, x1: 205, x2: 580, y: 2313 },
         { v: a.advance ? money(a.advance, a.advanceCurrency) : '', x1: 1095, x2: 1545, y: 2250 },
+        // Free line between the "expenses below…" sentence and the table
+        { v: vacationText(a.vacation), x1: 900, x2: 1950, y: 2131, lift: 0, size: 36 },
         // Declaration at the bottom
         { v: a.name, x1: 1350, x2: 1755, y: 558 },
         { v: a.idNum, x1: 895, x2: 1255, y: 555 },

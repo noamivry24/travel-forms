@@ -96,6 +96,33 @@
     if (ev.target.dataset.f === 'amount') ev.target.value = ev.target.value.replace(/[^\d.,]/g, '');
   });
 
+  // ---------- Vacation during the trip (settlement form) ----------
+  const vac = document.getElementById('vacation');
+  const vacEntries = document.getElementById('vacEntries');
+  function addVacation() {
+    vacEntries.insertAdjacentHTML('beforeend', `
+      <div class="entry">
+        <label>מתאריך <input type="date" data-f="from"></label>
+        <label>עד תאריך <input type="date" data-f="to"></label>
+        <button type="button" class="remove" aria-label="הסרת התאריכים" title="הסרה">×</button>
+      </div>`);
+  }
+  document.getElementById('vacAdd').addEventListener('click', addVacation);
+  vacEntries.addEventListener('click', e => { if (e.target.matches('.remove')) e.target.closest('.entry').remove(); });
+  vac.addEventListener('change', e => {
+    if (e.target.name !== 'vacation') return;
+    const yes = e.target.value === 'yes';
+    vac.querySelector('.vac-part').hidden = !yes;
+    if (yes && !vacEntries.querySelector('.entry')) addVacation();
+  });
+  function collectVacation() {
+    const answer = vac.querySelector('input[name=vacation]:checked')?.value || '';
+    const ranges = answer === 'yes'
+      ? [...vacEntries.querySelectorAll('.entry')].map(en => ({ from: en.querySelector('[data-f=from]').value, to: en.querySelector('[data-f=to]').value })).filter(r => r.from || r.to)
+      : [];
+    return { answer, ranges };
+  }
+
   function collectExpenses() {
     const out = {};
     for (const catEl of expBox.querySelectorAll('.cat')) {
@@ -345,11 +372,12 @@
   function collect() {
     const a = {};
     for (const el of form.elements) {
-      if (!el.name || el.name === 'want' || el.name === 'lodgingPaid') continue;
+      if (!el.name || el.name === 'want' || el.name === 'lodgingPaid' || el.name === 'vacation') continue;
       a[el.name] = el.value.trim();
     }
     a.advanceCurrency = readCurrency(document.querySelector('.cur-slot[data-name=advanceCurrency]'));
     a.expenses = collectExpenses();
+    a.vacation = collectVacation();
     return a;
   }
 
@@ -413,7 +441,7 @@
     const a = collect();
 
     // Hard requirement (cannot be skipped): confirm the bank account approval form will be sent.
-    if (key === 'commitment' && !document.getElementById('bankAck').checked) {
+    if (!document.getElementById('bankAck').checked) {
       const box = document.getElementById('bankNotice');
       box.scrollIntoView({ behavior: 'smooth', block: 'center' });
       box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
