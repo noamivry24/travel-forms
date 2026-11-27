@@ -73,7 +73,7 @@
 
   function vacationText(v) {
     if (!v || !v.answer) return '';
-    if (v.answer === 'no') return 'חופשה במהלך המשלחת: לא';
+    if (v.answer !== 'yes') return '';
     const ranges = (v.ranges || []).map(r => dateSpan([r.from, r.to || r.from])).filter(Boolean);
     return `חופשה במהלך המשלחת: כן${ranges.length ? ', בתאריכים ' + ranges.join(', ') : ''}`;
   }
